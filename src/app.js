@@ -223,10 +223,10 @@ async function callAI(messages, query) {
 
       // Build full prompt: system context + thread conversation + current question
       const threadContext = messages.length > 1
-        ? '\n\nThread conversation:\n' + messages.slice(0, -1).map((m) => `${m.role}: ${m.content}`).join('\n')
+        ? '\n\n[Previous messages in this thread for context only — do NOT repeat or echo these]\n' + messages.slice(0, -1).map((m) => `[${m.role === 'user' ? 'them' : 'you'}]: ${m.content}`).join('\n') + '\n[End of thread context]\n'
         : '';
       const currentQuestion = messages[messages.length - 1]?.content || query;
-      const fullPrompt = systemPrompt + threadContext + '\n\nUser question: ' + currentQuestion;
+      const fullPrompt = systemPrompt + threadContext + '\n\nRespond to this message:\n' + currentQuestion;
 
       const result = await new Promise((resolve, reject) => {
         const proc = spawn(CLAUDE_BIN, [
