@@ -629,6 +629,21 @@ healthApp.get('/health', (_req, res) => {
   // Build page index for knowledge retrieval
   initKnowledge();
 
+  // Authenticate claude-code CLI with setup token if provided
+  if (process.env.CLAUDE_CODE_AUTH_TOKEN) {
+    const { execFileSync } = require('child_process');
+    try {
+      execFileSync(CLAUDE_BIN, ['setup-token'], {
+        input: process.env.CLAUDE_CODE_AUTH_TOKEN,
+        env: claudeCodeEnv,
+        timeout: 15000,
+      });
+      console.log('[claude-code] Authenticated with setup token');
+    } catch (err) {
+      console.error('[claude-code] Setup token auth failed:', err.message);
+    }
+  }
+
   await app.start();
 
   // Resolve the bot's own user ID for thread history parsing
