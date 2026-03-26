@@ -1,6 +1,6 @@
 # AI Assistant Slack Bot
 
-An AI-powered Slack bot that acts as your delegate — answering questions from your team using a knowledge base and learnings you provide. Supports three AI providers: Anthropic Claude, Ollama (local/free), and Claude Code.
+An AI-powered Slack bot that acts as your AI version on Slack — answering questions from your team on your behalf using a knowledge base and learnings you provide. Supports three AI providers: Anthropic Claude, Ollama (local/free), and Claude Code.
 
 ---
 

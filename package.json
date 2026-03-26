@@ -1,7 +1,7 @@
 {
-  "name": "dhiraj-assistant-bot",
+  "name": "my-slack-ai-version",
   "version": "1.0.0",
-  "description": "",
+  "description": "An AI-powered Slack bot that responds on your behalf using your knowledge base and learnings",
   "main": "index.js",
   "scripts": {
     "start": "node src/app.js",
