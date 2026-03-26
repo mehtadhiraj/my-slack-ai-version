@@ -8,6 +8,16 @@ const express = require('express');
 const { initKnowledge, getRelevantKnowledge } = require('./knowledge');
 const { saveLearning, getDynamicContext } = require('./learnings');
 
+/** Env vars for claude-code subprocess — exclude ANTHROPIC_API_KEY so it uses subscription auth */
+const claudeCodeEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([key]) => key !== 'ANTHROPIC_API_KEY')
+);
+
+/** Path to claude binary — use local node_modules first, fall back to global */
+const CLAUDE_BIN = require('fs').existsSync(require('path').join(__dirname, '..', 'node_modules', '.bin', 'claude'))
+  ? require('path').join(__dirname, '..', 'node_modules', '.bin', 'claude')
+  : 'claude';
+
 // ── Initialization ──────────────────────────────────────────────────────────
 
 const socketModeClient = new SocketModeClient({
@@ -88,9 +98,9 @@ function toSlackMrkdwn(text) {
 async function classifyWithClaudeCode(systemPrompt, text) {
   const model = process.env.CLAUDE_CODE_MODEL || 'sonnet';
   return new Promise((resolve, reject) => {
-    const proc = spawn('claude', [
-      '-p', '--bare', '--output-format', 'text', '--model', model,
-    ], { env: { ...process.env }, stdio: ['pipe', 'pipe', 'pipe'] });
+    const proc = spawn(CLAUDE_BIN, [
+      '-p', '--output-format', 'text', '--model', model,
+    ], { env: claudeCodeEnv, stdio: ['pipe', 'pipe', 'pipe'] });
 
     let stdout = '';
     proc.stdout.on('data', (d) => { stdout += d; });
@@ -219,13 +229,12 @@ async function callAI(messages, query) {
       const fullPrompt = systemPrompt + threadContext + '\n\nUser question: ' + currentQuestion;
 
       const result = await new Promise((resolve, reject) => {
-        const proc = spawn('claude', [
+        const proc = spawn(CLAUDE_BIN, [
           '-p',
-          '--bare',
           '--output-format', 'json',
           '--model', model,
         ], {
-          env: { ...process.env },
+          env: claudeCodeEnv,
           stdio: ['pipe', 'pipe', 'pipe'],
         });
 
