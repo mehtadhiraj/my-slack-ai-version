@@ -629,18 +629,17 @@ healthApp.get('/health', (_req, res) => {
   // Build page index for knowledge retrieval
   initKnowledge();
 
-  // Authenticate claude-code CLI with setup token if provided
-  if (process.env.CLAUDE_CODE_AUTH_TOKEN) {
+  // Verify claude-code auth if using claude-code provider
+  if ((process.env.AI_PROVIDER || '').toLowerCase() === 'claude-code') {
     const { execFileSync } = require('child_process');
     try {
-      execFileSync(CLAUDE_BIN, ['setup-token'], {
-        input: process.env.CLAUDE_CODE_AUTH_TOKEN,
+      const status = JSON.parse(execFileSync(CLAUDE_BIN, ['auth', 'status', '--json'], {
         env: claudeCodeEnv,
-        timeout: 15000,
-      });
-      console.log('[claude-code] Authenticated with setup token');
+        timeout: 10000,
+      }).toString());
+      console.log(`[claude-code] Auth: ${status.authMethod} (${status.email || 'no email'}) subscription: ${status.subscriptionType || 'none'}`);
     } catch (err) {
-      console.error('[claude-code] Setup token auth failed:', err.message);
+      console.error('[claude-code] Auth check failed — run "claude auth login" on this machine first:', err.message);
     }
   }
 
