@@ -128,7 +128,7 @@ async function classifyWithClaudeCode(systemPrompt, text) {
  */
 async function isSeekingHelp(text) {
   const classifyPrompt =
-    'You are a message classifier. Determine if the following message is seeking help, asking a question, requesting information, or needs a response from a knowledgeable person. Reply with ONLY "yes" or "no", nothing else.';
+    'You are a message classifier. Determine if the following message is seeking help, asking a question, requesting information, asking someone to share something (like docs, links, APIs, details), or needs a response from a knowledgeable person. Messages like "please share", "can you share", "share the docs", "send me the link" are ALL help requests. Reply with ONLY "yes" or "no", nothing else.';
 
   const provider = (process.env.AI_PROVIDER || 'anthropic').toLowerCase();
 
