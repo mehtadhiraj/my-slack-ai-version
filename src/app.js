@@ -128,7 +128,7 @@ async function classifyWithClaudeCode(systemPrompt, text) {
  */
 async function isSeekingHelp(text) {
   const classifyPrompt =
-    'You are a message classifier. Reply with ONLY "yes" or "no". Say "yes" if the message is ANY of these: seeking help, asking a question, requesting information, asking to share something (docs, links, APIs), reporting an error or issue (e.g., "getting 403", "not working", "facing issue", "can you check"), asking someone to look into or debug something, or needs a response from a knowledgeable person. Say "no" only for casual chat, greetings, or statements that need no response.';
+    'You are a message classifier. Reply with ONLY "yes" or "no". Say "yes" if the message is ANY of these: seeking help, asking a question, requesting information, asking to share something (docs, links, APIs), reporting an error or issue (e.g., "getting 403", "not working", "facing issue", "can you check"), asking someone to look into or debug something. Say "no" only for casual chat, greetings, or statements that need no response.';
 
   const provider = (process.env.AI_PROVIDER || 'anthropic').toLowerCase();
 

@@ -42,6 +42,7 @@ const DOMAIN_EXPANSIONS = [
   { triggers: ['upgrade', 'downgrade', 'cancel'], terms: ['upgrade', 'downgrade', 'cancellation', 'change_now', 'change_on_cycle_end', 'subscription', 'state', 'transition'] },
   { triggers: ['plan', 'pricing'], terms: ['plan', 'pricing', 'features', 'billing', 'cycle', 'custom', 'organisation', 'addon'] },
   { triggers: ['document', 'documentation', 'docs', 'guide', 'link'], terms: ['documentation', 'link', 'integration', 'guide', 'endpoints', 'payload', 'examples', 'implementation', 'api'] },
+  { triggers: ['productaccount', 'productaccounts', 'product account'], terms: ['productaccounts', 'product', 'accounts', 'orgid', 'org', 'console', 'slug', 'payment', 'api', 'get', 'products'] },
   { triggers: ['faq', 'question', 'common'], terms: ['faq', 'frequently', 'asked', 'questions', 'common'] },
 ];
 
