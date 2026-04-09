@@ -128,7 +128,7 @@ async function classifyWithClaudeCode(systemPrompt, text) {
  */
 async function isSeekingHelp(text) {
   const classifyPrompt =
-    'You are a message classifier. Reply with ONLY "yes" or "no". Say "yes" if the message is ANY of these: seeking help, asking a question, requesting information, asking to share something (docs, links, APIs), reporting an error or issue (e.g., "getting 403", "not working", "facing issue", "can you check"), asking someone to look into or debug something. Say "no" only for casual chat, greetings, or statements that need no response.';
+    'You are a message classifier. Reply with ONLY "yes" or "no". Say "yes" if the message is ANY of these: seeking help, asking a question, requesting information, asking someone to share or send anything (docs, links, APIs, code, scripts, examples, snippets, curl, payloads, configs, credentials, IDs), making any request that expects a response (even imperative phrasing like "share me X", "send me X", "give me X", "show me X", "provide X", "I need X", "can I get X"), reporting an error or issue (e.g., "getting 403", "not working", "facing issue", "can you check"), asking someone to look into or debug something. Say "no" only for casual chat, greetings, acknowledgements, or pure statements that clearly need no response.';
 
   const provider = (process.env.AI_PROVIDER || 'anthropic').toLowerCase();
 
@@ -300,9 +300,9 @@ async function callAI(messages, query) {
  * @param {string} opts.channelId - Channel to post in
  * @param {import('@slack/bolt').SayFn} opts.client - Slack Web API client
  * @param {string} [opts.prefix=''] - Optional prefix prepended to the reply
- * @param {boolean} [opts.skipIntentCheck=false] - Skip the isSeekingHelp check (e.g. for DMs)
+ * @param {boolean} [opts.isDM=false] - Whether this is a direct message (skips intent check, allows status/fallback messages)
  */
-async function handleMessage({ text, messageTs, threadTs, channelId, client, prefix = '', skipIntentCheck = false }) {
+async function handleMessage({ text, messageTs, threadTs, channelId, client, prefix = '', isDM = false }) {
   // Prevent processing the same message twice (e.g. event delivered to multiple listeners)
   if (processedMessages.has(messageTs)) {
     console.log(`[dedup] Already processed message ${messageTs}, skipping`);
@@ -322,7 +322,7 @@ async function handleMessage({ text, messageTs, threadTs, channelId, client, pre
   if (!cleaned) return;
 
   // Only respond if the message is seeking help (skip for DMs — intent is clear)
-  if (!skipIntentCheck) {
+  if (!isDM) {
     const needsHelp = await isSeekingHelp(cleaned);
     if (!needsHelp) {
       console.log(`[skipped] Not a help request: "${cleaned.slice(0, 80)}"`);
@@ -385,39 +385,74 @@ async function handleMessage({ text, messageTs, threadTs, channelId, client, pre
       messages.push({ role: 'user', content: cleaned });
     }
 
-    statusMsg = await client.chat.postMessage({
-      channel: channelId,
-      thread_ts: threadTs,
-      text: ':parrot_beer: Thinking...',
-    });
+    // Only show "Thinking..." status in DMs — keep channel threads quiet until we have a real reply
+    if (isDM) {
+      statusMsg = await client.chat.postMessage({
+        channel: channelId,
+        thread_ts: threadTs,
+        text: ':parrot_beer: Thinking...',
+      });
+    }
 
     const response = await callAI(messages, cleaned);
     console.log(`[ai-response] provider=${provider} length=${response ? response.length : 0} preview="${(response || '').slice(0, 100)}"`);
 
     if (!response) {
       console.error(`[error] ${provider} returned no response for channel=${channelId} thread=${threadTs}`);
-      await client.chat.update({
-        channel: channelId,
-        ts: statusMsg.ts,
-        text: `Sorry, I couldn't generate a response. Please tag <@${AUTHOR_USER_ID}> directly.`,
-      });
+      if (isDM && statusMsg) {
+        await client.chat.update({
+          channel: channelId,
+          ts: statusMsg.ts,
+          text: `Sorry, I couldn't generate a response. Please tag <@${AUTHOR_USER_ID}> directly.`,
+        });
+      }
+      return;
+    }
+
+    // If the bot has no relevant context, stay silent in channel threads — only reply in DMs
+    const noContext = /don'?t have relevant context/i.test(response);
+    if (noContext && !isDM) {
+      console.log(`[skipped] No relevant context for channel thread; staying silent`);
       return;
     }
 
     const SLACK_MAX_CHARS = 3900;
     const fullText = prefix + toSlackMrkdwn(response);
 
-    if (fullText.length <= SLACK_MAX_CHARS) {
-      const updateResult = await client.chat.update({
-        channel: channelId,
-        ts: statusMsg.ts,
-        text: fullText,
-      });
-      if (!updateResult.ok) {
-        console.error(`[error] chat.update failed: ${updateResult.error}`);
+    // Helper: post first chunk (update status if present, else new message), then any follow-ups
+    const sendChunks = async (chunks) => {
+      if (statusMsg) {
+        const updateResult = await client.chat.update({
+          channel: channelId,
+          ts: statusMsg.ts,
+          text: chunks[0],
+        });
+        if (!updateResult.ok) {
+          console.error(`[error] chat.update failed: ${updateResult.error}`);
+        }
+      } else {
+        const postResult = await client.chat.postMessage({
+          channel: channelId,
+          thread_ts: threadTs,
+          text: chunks[0],
+        });
+        if (!postResult.ok) {
+          console.error(`[error] chat.postMessage failed: ${postResult.error}`);
+        }
       }
+      for (let i = 1; i < chunks.length; i++) {
+        await client.chat.postMessage({
+          channel: channelId,
+          thread_ts: threadTs,
+          text: chunks[i],
+        });
+      }
+    };
+
+    if (fullText.length <= SLACK_MAX_CHARS) {
+      await sendChunks([fullText]);
     } else {
-      // Split into chunks at paragraph boundaries, send first as update, rest as new messages
+      // Split into chunks at paragraph boundaries
       const chunks = [];
       let remaining = fullText;
       while (remaining.length > 0) {
@@ -431,25 +466,7 @@ async function handleMessage({ text, messageTs, threadTs, channelId, client, pre
         chunks.push(remaining.slice(0, splitAt));
         remaining = remaining.slice(splitAt).trimStart();
       }
-
-      // Update the thinking message with the first chunk
-      const updateResult = await client.chat.update({
-        channel: channelId,
-        ts: statusMsg.ts,
-        text: chunks[0],
-      });
-      if (!updateResult.ok) {
-        console.error(`[error] chat.update (chunk 0) failed: ${updateResult.error}`);
-      }
-
-      // Send remaining chunks as follow-up messages in the thread
-      for (let i = 1; i < chunks.length; i++) {
-        await client.chat.postMessage({
-          channel: channelId,
-          thread_ts: threadTs,
-          text: chunks[i],
-        });
-      }
+      await sendChunks(chunks);
     }
 
     console.log(`[responded] channel=${channelId} thread=${threadTs} provider=${provider} chunks=${Math.ceil(fullText.length / SLACK_MAX_CHARS)}`);
@@ -606,7 +623,7 @@ app.message(async ({ message, client }) => {
     channelId: message.channel,
     client,
     prefix: '',
-    skipIntentCheck: true,
+    isDM: true,
   });
 });
 

@@ -43,6 +43,8 @@ const DOMAIN_EXPANSIONS = [
   { triggers: ['plan', 'pricing'], terms: ['plan', 'pricing', 'features', 'billing', 'cycle', 'custom', 'organisation', 'addon'] },
   { triggers: ['document', 'documentation', 'docs', 'guide', 'link'], terms: ['documentation', 'link', 'integration', 'guide', 'endpoints', 'payload', 'examples', 'implementation', 'api'] },
   { triggers: ['productaccount', 'productaccounts', 'product account'], terms: ['productaccounts', 'product', 'accounts', 'orgid', 'org', 'console', 'slug', 'payment', 'api', 'get', 'products'] },
+  { triggers: ['tokyo'], terms: ['tokyo', 'integration', 'server', 'organization', 'authentication', 'encrypted', 'token', 'bearer', 'aes', 'crypto'] },
+  { triggers: ['token', 'generate token', 'api token', 'encrypted token', 'script'], terms: ['token', 'encrypted', 'generate', 'script', 'api', 'key', 'authentication', 'bearer', 'integration', 'server', 'aes', 'crypto', 'secret', 'iv', 'organization'] },
   { triggers: ['faq', 'question', 'common'], terms: ['faq', 'frequently', 'asked', 'questions', 'common'] },
 ];
 
